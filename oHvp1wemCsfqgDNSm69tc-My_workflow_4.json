@@ -1,0 +1,342 @@
+{
+  "name": "My workflow 3",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "b7cb6915-261a-43c0-92de-f43d04a77180",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        48,
+        16
+      ],
+      "id": "ce7bbcd8-71e1-4307-a792-f73bb4291615",
+      "name": "Webhook",
+      "webhookId": "b7cb6915-261a-43c0-92de-f43d04a77180"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "528ebdc9-cfe9-4ae1-9fc2-4149a959da18",
+              "name": "paper",
+              "value": "={{ $json.body.paper }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        16
+      ],
+      "id": "be19609b-6871-4edc-a189-6c071d806c16",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        752,
+        -16
+      ],
+      "id": "cf232686-94bc-49ca-b4c9-91f6aea98e9f",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractJson(text) {\n  if (typeof text !== 'string') return null;\n  const match = text.match(/\\{[\\s\\S]*\\}/);\n  if (!match) return null;\n  try {\n    return JSON.parse(match[0]);\n  } catch {\n    return null;\n  }\n}\n\nfunction pickRaw(item) {\n  // LLM 노드마다 결과 필드명이 달라서 후보를 넓게 잡음\n  return (\n    item.json.responseText ||\n    item.json.text ||\n    item.json.outputText ||\n    item.json.output ||\n    item.json.message ||\n    item.json.content ||\n    JSON.stringify(item.json)\n  );\n}\n\nconst reviews = [];\n\nfor (const item of items) {\n  const raw = pickRaw(item);\n  const parsed = extractJson(raw) || item.json;\n\n  if (\n    parsed &&\n    parsed.model !== undefined &&\n    parsed.originality !== undefined &&\n    parsed.validity !== undefined &&\n    parsed.generalizability !== undefined\n  ) {\n    reviews.push(parsed);\n  }\n}\n\n// 평균 점수 (0~5)\nlet total = 0;\nlet count = 0;\n\nfor (const r of reviews) {\n  total += Number(r.originality);\n  total += Number(r.validity);\n  total += Number(r.generalizability);\n  count += 3;\n}\n\nconst finalScore = count ? Number((total / count).toFixed(2)) : null;\n\n// Markdown 표 만들기\nconst mdHeader =\n  `| Model | Originality | Validity | Generalizability | Comment(ko) |\\n` +\n  `|---|---:|---:|---:|---|`;\n\nconst mdRows = reviews.map(r => {\n  const c = (r.comment_ko || '').replace(/\\n/g, ' ');\n  return `| ${r.model} | ${r.originality} | ${r.validity} | ${r.generalizability} | ${c} |`;\n});\n\nconst table_markdown = [mdHeader, ...mdRows].join('\\n');\n\n// HTML 표 만들기\nconst escapeHtml = (s) =>\n  String(s ?? '')\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;')\n    .replace(/\"/g, '&quot;')\n    .replace(/'/g, '&#039;');\n\nconst table_html = `\n<table border=\"1\" cellpadding=\"8\" cellspacing=\"0\" style=\"border-collapse:collapse; width:100%;\">\n  <thead>\n    <tr>\n      <th>Model</th>\n      <th>Originality</th>\n      <th>Validity</th>\n      <th>Generalizability</th>\n      <th>Comment(ko)</th>\n    </tr>\n  </thead>\n  <tbody>\n    ${reviews.map(r => `\n      <tr>\n        <td>${escapeHtml(r.model)}</td>\n        <td style=\"text-align:right;\">${escapeHtml(r.originality)}</td>\n        <td style=\"text-align:right;\">${escapeHtml(r.validity)}</td>\n        <td style=\"text-align:right;\">${escapeHtml(r.generalizability)}</td>\n        <td>${escapeHtml(r.comment_ko || '')}</td>\n      </tr>\n    `).join('')}\n  </tbody>\n</table>\n`.trim();\n\nreturn [{\n  final_score_5scale: finalScore,\n  breakdown: reviews,\n  table_markdown,\n  table_html\n}];\n;\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "870c5574-0c91-44ea-9b62-d36c8490bd82",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1104,
+        0
+      ],
+      "id": "6a386eb4-b04a-4c68-9ad6-0e2d08c28b09",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=아래 문서를 평가하세요.\n\n평가 기준 (각각 0~5점, 소수 허용):\n1) Originality (독창성)\n2) Validity (내용의 타당성)\n3) Generalizability (문서의 전반적 평가)\n\n출력은 반드시 아래 스키마의 \"JSON 하나\"만 반환하세요.\n- 점수는 number로 반환하세요.\n- 코멘트는 한국어로 짧게 작성하세요.\n\n반환 스키마:\n{\n  \"model\": \"Gemini\",\n  \"originality\": number,\n  \"validity\": number,\n  \"generalizability\": number,\n  \"comment_ko\": \"한국어로 2~4문장 요약 코멘트\"\n}\n\n문서:\n{{ $json.paper }}\n",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=당신은 **일반 문서를 엄격하게 심사하는 평가자(reviewer)**입니다. 아래 규칙을 반드시 따르세요.\n\n사용자는 문서 텍스트를 제공합니다.\n\n평가는 **0~5점(소수 허용)**으로 합니다.\n\n출력은 반드시 **\"유효한 JSON 하나\"**만 반환합니다. (설명 문장, 코드블록, 추가 텍스트 금지)\n\nJSON의 필드명/구조는 사용자가 지정한 스키마를 그대로 따릅니다.\n\n코멘트가 필요하면 JSON 내부 필드로만 제공합니다."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        512,
+        -320
+      ],
+      "id": "e8bfa312-99e5-49e3-89e4-2201088d9a7a",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=아래 문서를 평가하세요.\n\n평가 기준 (각각 0~5점, 소수 허용):\n1) Originality (독창성)\n2) Validity (내용의 타당성)\n3) Generalizability (문서의 전반적 평가)\n\n출력은 반드시 아래 스키마의 \"JSON 하나\"만 반환하세요.\n- 점수는 number로 반환하세요.\n- 코멘트는 한국어로 짧게 작성하세요.\n\n반환 스키마:\n{\n  \"model\": \"Claude\",\n  \"originality\": number,\n  \"validity\": number,\n  \"generalizability\": number,\n  \"comment_ko\": \"한국어로 2~4문장 요약 코멘트\"\n}\n\n문서:\n{{ $json.paper }}\n",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=당신은 **일반 문서를 엄격하게 심사하는 평가자(reviewer)**입니다. 아래 규칙을 반드시 따르세요.\n\n사용자는 문서 텍스트를 제공합니다.\n\n평가는 **0~5점(소수 허용)**으로 합니다.\n\n출력은 반드시 **\"유효한 JSON 하나\"**만 반환합니다. (설명 문장, 코드블록, 추가 텍스트 금지)\n\nJSON의 필드명/구조는 사용자가 지정한 스키마를 그대로 따릅니다.\n\n코멘트가 필요하면 JSON 내부 필드로만 제공합니다."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        448,
+        0
+      ],
+      "id": "e59661e4-894d-40cc-a158-57f4cb9296e7",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=아래 문서를 평가하세요.\n\n평가 기준 (각각 0~5점, 소수 허용):\n1) Originality (독창성)\n2) Validity (내용의 타당성)\n3) Generalizability (문서의 전반적 평가)\n\n출력은 반드시 아래 스키마의 \"JSON 하나\"만 반환하세요.\n- 점수는 number로 반환하세요.\n- 코멘트는 한국어로 짧게 작성하세요.\n\n반환 스키마:\n{\n  \"model\": \"Chat-gpt\",\n  \"originality\": number,\n  \"validity\": number,\n  \"generalizability\": number,\n  \"comment_ko\": \"한국어로 2~4문장 요약 코멘트\"\n}\n\n문서:\n{{ $json.paper }}\n",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=당신은 **일반 문서를 엄격하게 심사하는 평가자(reviewer)**입니다. 아래 규칙을 반드시 따르세요.\n\n사용자는 문서 텍스트를 제공합니다.\n\n평가는 **0~5점(소수 허용)**으로 합니다.\n\n출력은 반드시 **\"유효한 JSON 하나\"**만 반환합니다. (설명 문장, 코드블록, 추가 텍스트 금지)\n\nJSON의 필드명/구조는 사용자가 지정한 스키마를 그대로 따릅니다.\n\n코멘트가 필요하면 JSON 내부 필드로만 제공합니다."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        464,
+        272
+      ],
+      "id": "4137e9ed-5ff3-4e23-95b2-c6ff6b994752",
+      "name": "Basic LLM Chain2"
+    },
+    {
+      "parameters": {
+        "model": "google/gemini-3-flash-preview",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        512,
+        -160
+      ],
+      "id": "6c2892e9-83ed-4e1b-aa9f-cfc2bf17ec77",
+      "name": "gemini",
+      "credentials": {
+        "openRouterApi": {
+          "id": "Bu8kb4Wnwu0p07Z5",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "anthropic/claude-3-haiku",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        464,
+        128
+      ],
+      "id": "c21e6a7a-e7d1-4b4e-9e3c-1a7ea26f3970",
+      "name": "claude",
+      "credentials": {
+        "openRouterApi": {
+          "id": "Bu8kb4Wnwu0p07Z5",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        528,
+        416
+      ],
+      "id": "36a7d7b1-668b-4330-b47d-ec8ed02ec4e1",
+      "name": "chatgpt",
+      "credentials": {
+        "openRouterApi": {
+          "id": "Bu8kb4Wnwu0p07Z5",
+          "name": "OpenRouter account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Basic LLM Chain2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain2": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "gemini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "claude": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "chatgpt": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 1,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

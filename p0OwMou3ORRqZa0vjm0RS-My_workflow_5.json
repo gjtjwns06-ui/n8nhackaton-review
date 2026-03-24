@@ -1,0 +1,394 @@
+{
+  "name": "My workflow 3",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "b7cb6915-261a-43c0-92de-f43d04a77180",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        208,
+        400
+      ],
+      "id": "8c1f1de1-720d-4fa4-9a4e-651312c11007",
+      "name": "Webhook",
+      "webhookId": "b7cb6915-261a-43c0-92de-f43d04a77180"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        432,
+        400
+      ],
+      "id": "f7e5dd5c-8a2e-44da-a87b-4f49da52df61",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "You are a strict academic peer reviewer.\n\nScore the paper from 0 to 5 (decimals allowed) for:\n- Originality\n- Validity (methodological soundness)\n- Generalizability\n\nReturn ONLY valid JSON:\n{\n  \"model\": \"GPT\",\n  \"originality\": number,\n  \"validity\": number,\n  \"generalizability\": number\n}\n\nPaper:\n{{ $json.paper }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        832,
+        544
+      ],
+      "id": "39a8e987-ba1a-4c19-9638-4d0f0f46ca3b",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "goy5zI55eQecO2oM",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-1.5-flash",
+          "mode": "id"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a strict academic peer reviewer.\n\nScore the paper from 0 to 5 (decimals allowed) for:\n- Originality\n- Validity (methodological soundness)\n- Generalizability\n\nReturn ONLY valid JSON:\n{\n  \"model\": \"Gemini\",\n  \"originality\": number,\n  \"validity\": number,\n  \"generalizability\": number\n}\n\nPaper:\n{{ $json.paper }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        832,
+        224
+      ],
+      "id": "61023465-c9c1-44c1-a4b3-9a34b3f10d7b",
+      "name": "Message a model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "r413YQynVGn33196",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "YOUR_CLAUDE_API_KEY"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-3-5-sonnet-20240620\",\n  \"max_tokens\": 600,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"You are a strict academic peer reviewer.\\n\\nScore the paper from 0 to 5 (decimals allowed) for:\\n- Originality\\n- Validity (methodological soundness)\\n- Generalizability\\n\\nReturn ONLY valid JSON:\\n{\\n  \\\"model\\\": \\\"Claude\\\",\\n  \\\"originality\\\": number,\\n  \\\"validity\\\": number,\\n  \\\"generalizability\\\": number\\n}\\n\\nPaper:\\n{{ $json.paper }}\"\n    }\n  ]\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        832,
+        400
+      ],
+      "id": "1cc02b3e-ff36-43a6-adf3-0e895596c0b4",
+      "name": "claude"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "=={{ $binary.file.mimeType }}",
+                    "rightValue": "application/pdf",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "7e743aae-86e0-4a7e-b624-1d3c31956128"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "73b96816-54f2-4b79-adbd-5d3a9a9d7186",
+                    "leftValue": "={{ $binary.file.mimeType }}",
+                    "rightValue": "text/plain",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1a7d172f-abd7-49d0-ae08-bd26b5c12c48",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        272,
+        784
+      ],
+      "id": "c7ce51c0-a989-40e9-bd94-3a63e7f61227",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        544,
+        800
+      ],
+      "id": "1bf72d73-6294-467c-8f08-f1277d86cb99",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "528ebdc9-cfe9-4ae1-9fc2-4149a959da18",
+              "name": "paper",
+              "value": "={{ ($json.text || '').slice(0, 12000) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        656,
+        400
+      ],
+      "id": "d2f94600-ef69-4573-b60d-dc00874cd4a7",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1104,
+        368
+      ],
+      "id": "df495369-2067-4137-be7e-a5d7c1815273",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "jsCode": "function extractJson(text) {\n  if (typeof text !== 'string') return null;\n  const match = text.match(/\\{[\\s\\S]*\\}/);\n  if (!match) return null;\n  try {\n    return JSON.parse(match[0]);\n  } catch {\n    return null;\n  }\n}\n\nconst reviews = [];\n\nfor (const item of items) {\n  const raw =\n    item.json.responseText ||\n    item.json.text ||\n    item.json.message ||\n    item.json.content ||\n    JSON.stringify(item.json);\n\n  const parsed = extractJson(raw) || item.json;\n\n  if (\n    parsed &&\n    parsed.originality !== undefined &&\n    parsed.validity !== undefined &&\n    parsed.generalizability !== undefined\n  ) {\n    reviews.push(parsed);\n  }\n}\n\nlet total = 0;\nlet count = 0;\n\nfor (const r of reviews) {\n  total += Number(r.originality);\n  total += Number(r.validity);\n  total += Number(r.generalizability);\n  count += 3;\n}\n\nreturn [{\n  final_score_5scale: Number((total / count).toFixed(2)),\n  breakdown: reviews\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        384
+      ],
+      "id": "b025ef55-f6dd-4655-a429-cc9d825e893c",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1472,
+        384
+      ],
+      "id": "3e04e2f2-23c2-4aab-b7ed-ac8bc6caf313",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Message a model1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "claude",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Message a model1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "claude": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}

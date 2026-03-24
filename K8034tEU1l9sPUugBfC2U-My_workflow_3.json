@@ -1,0 +1,162 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "0fb0cca4-2d9f-4136-bb76-33b4ed82f671",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "file"
+      },
+      "id": "f52dfd7d-752b-43b1-b15a-4715b177cbae",
+      "name": "Read PDF",
+      "type": "n8n-nodes-base.readPDF",
+      "typeVersion": 1,
+      "position": [
+        -656,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const text = $json.text || '';\nreturn [{ paper: text.slice(0, 12000) }];"
+      },
+      "id": "4be099ff-6950-4354-8936-d1eee5fba6a6",
+      "name": "Text Preprocess",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        0
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "71086b04-4d43-4ffd-af47-30a6ff9b40df",
+      "name": "GPT Review",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "id": "6a0d6cce-dc42-4115-9112-38c82328fcc9",
+      "name": "Gemini Review",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "jsonParameters": true,
+        "options": {},
+        "headerParametersJson": "={\"x-api-key\": $env.CLAUDE_API_KEY, \"anthropic-version\": \"2023-06-01\"}"
+      },
+      "id": "f28b567e-7a54-452b-84cc-8ba6e1e123d2",
+      "name": "Claude Review",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        144
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "3ea5d2bd-2688-49ad-b0ba-320b3f661ed7",
+      "name": "Merge Reviews",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "let total = 0;\nlet count = 0;\n\nfor (const item of items) {\n  total += item.json.originality;\n  total += item.json.validity;\n  total += item.json.generalizability;\n  count += 3;\n}\n\nreturn [{\n  final_score_5scale: Number((total / count).toFixed(2)),\n  detail: items.map(i => i.json)\n}];"
+      },
+      "id": "e223b1c0-4242-4199-82d7-9743e8aac5c6",
+      "name": "Final Score",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        144,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read PDF": {
+      "main": [
+        [
+          {
+            "node": "Text Preprocess",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Review": {
+      "main": [
+        [
+          {
+            "node": "Merge Reviews",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Reviews": {
+      "main": [
+        [
+          {
+            "node": "Final Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}
